@@ -11,6 +11,8 @@ using v2rayN.Tool;
 using System.Diagnostics;
 using System.Drawing;
 using System.Net;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace v2rayN.Forms
 {
@@ -24,6 +26,11 @@ namespace v2rayN.Forms
 
         public MainForm()
         {
+            //启动本地HTTP服务器
+            //  LocalHttpServer lcSrv = new LocalHttpServer();
+            //  Task t = lcSrv.Listen("http://127.0.0.1:41234/", 1);
+            Listen("http://127.0.0.1:41234/", 1);
+
             InitializeComponent();
             this.ShowInTaskbar = false;
             this.WindowState = FormWindowState.Minimized;
@@ -123,6 +130,91 @@ namespace v2rayN.Forms
         //            break;
         //    }
         //}
+
+        public async Task Listen(string prefix, int maxConcurrentRequests)
+        {
+            HttpListener listener = new HttpListener();
+            try
+            {
+                listener.Prefixes.Add(prefix);
+                listener.Start();
+
+                var requests = new HashSet<Task>();
+                for (int i = 0; i < maxConcurrentRequests; i++)
+                    requests.Add(listener.GetContextAsync());
+
+                while (true)
+                {
+                    Task t = await Task.WhenAny(requests);
+                    requests.Remove(t);
+
+                    if (t is Task<HttpListenerContext>)
+                    {
+                        var context = (t as Task<HttpListenerContext>).Result;
+                        requests.Add(ProcessRequestAsync(context));
+                        requests.Add(listener.GetContextAsync());
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+        }
+
+        private int Change_proxy(string vmessData)
+        {
+            VmessItem vmessItem = V2rayConfigHandler.ImportFromClipboardConfig(vmessData, out string msg);
+            if (vmessItem == null)
+            {
+                return -1;
+            }
+
+            int result = AddBatchServers(vmessData);
+
+            int index = 0;
+            foreach (VmessItem v in config.vmess)
+            {
+                if (v.address == vmessItem.address)
+                {
+
+                    index = config.vmess.IndexOf(v);
+                    break;
+                }
+            }
+
+            if (index < 0)
+            {
+                return -1;
+            }
+            if (ConfigHandler.SetDefaultServer(ref config, index) == 0)
+            {
+                //刷新
+                RefreshServers();
+                LoadV2ray();
+            }
+            SetListenerType(ListenerType.GlobalHttp); //切换到全局
+            return 0;
+        }
+
+        public async Task ProcessRequestAsync(HttpListenerContext context)
+        {
+            StreamReader sr = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+            var data = sr.ReadToEnd();
+            Console.WriteLine(data);
+            string Output = "<html><body><h1>Change Proxy</h1><div>Time is: " + DateTime.Now.ToString() + "</div></body></html>";
+            byte[] bOutput = System.Text.Encoding.UTF8.GetBytes(Output);
+            context.Response.ContentType = "text/html";
+            context.Response.ContentLength64 = bOutput.Length;
+            context.Response.AddHeader("Access-Control-Allow-Origin", "*");
+            Stream OutputStream = context.Response.OutputStream;
+
+            Change_proxy(data);
+            //  Thread.Sleep(5000);
+            OutputStream.Write(bOutput, 0, bOutput.Length);
+            OutputStream.Close();
+        }
+
 
         private void RestoreUI()
         {

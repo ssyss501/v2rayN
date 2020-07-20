@@ -749,6 +749,23 @@ namespace v2rayN.Handler
             return 0;
         }
 
+        public static bool isIPduplicate(ref Config config,VmessItem vmessItem)
+        {
+            if(config.vmess.Count()==0)
+            {
+                return false;
+            }
+
+            foreach (VmessItem v in config.vmess)
+            {
+                if (v.address == vmessItem.address)
+                {
+                    return true;
+                }
+             }
+            return false;
+        }
+
         /// <summary>
         /// 批量添加服务器
         /// </summary>
@@ -786,26 +803,32 @@ namespace v2rayN.Handler
                 {
                     continue;
                 }
+                    
+
                 vmessItem.subid = subid;
-                if (vmessItem.configType == (int)EConfigType.Vmess)
+                if (isIPduplicate(ref config,vmessItem) == false)
                 {
-                    if (AddServer(ref config, vmessItem, -1) == 0)
+                    if (vmessItem.configType == (int)EConfigType.Vmess)
                     {
-                        countServers++;
+                        if (AddServer(ref config, vmessItem, -1) == 0)
+                        {
+                            countServers++;
+                        }
+
                     }
-                }
-                else if (vmessItem.configType == (int)EConfigType.Shadowsocks)
-                {
-                    if (AddShadowsocksServer(ref config, vmessItem, -1) == 0)
+                    else if (vmessItem.configType == (int)EConfigType.Shadowsocks)
                     {
-                        countServers++;
+                        if (AddShadowsocksServer(ref config, vmessItem, -1) == 0)
+                        {
+                            countServers++;
+                        }
                     }
-                }
-                else if (vmessItem.configType == (int)EConfigType.Socks)
-                {
-                    if (AddSocksServer(ref config, vmessItem, -1) == 0)
+                    else if (vmessItem.configType == (int)EConfigType.Socks)
                     {
-                        countServers++;
+                        if (AddSocksServer(ref config, vmessItem, -1) == 0)
+                        {
+                            countServers++;
+                        }
                     }
                 }
             }

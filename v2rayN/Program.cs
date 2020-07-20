@@ -1,6 +1,8 @@
-﻿using System;
+﻿
+using System;
 using System.Diagnostics;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using v2rayN.Forms;
 using v2rayN.Properties;
@@ -43,6 +45,8 @@ namespace v2rayN
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
                 Application.Run(new MainForm());
+
+
             }
             else
             {
